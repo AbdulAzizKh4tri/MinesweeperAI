@@ -6,6 +6,7 @@ Welcome to the Minesweeper project! This is a browser-based implementation of th
 - Customizable Board: Easily modify the board dimensions and mine count.
 
 ## Demo
+![](https://github.com/pronoob828/MinesweeperAI/blob/main/Minesweeper.gif)
 
 ## To Run
 Just open all_in_one.html.
