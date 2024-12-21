@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <link rel="stylesheet" href="minesweeper.css">
+    <script type="module" src="minesweeper.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Title Section -->
+        <div>
+            <h1 id="title">💣Minesweeper💣</h1>
+        </div>
+        
+        <!-- Info Buttons Section -->
+        <div>
+            <span class="info">Set Mine Count 🚩<input tabindex="1" type="text" id="mine_count" value="0"></span>
+        </div>
+
+        <!-- Game Matrix and Side Panels -->
+        <div class="game-wrapper">
+            <!-- Left Panel -->
+            <div class="side-panel">
+                <label for="legend-3"><small>Marked Mine</small></label>
+                <button id="legend-3" class="marked-mine"></button>
+                <label for="legend-4"><small>Marked Safe</small></label>
+                <button id="legend-4" class="marked-safe"></button>
+                <label for="legend-5"><small>Making Random<br>Move</small></label>
+                <button id="legend-5" class="random-move"></button>
+                <label for="legend-6"><small>Making Safe<br>Move</small></label>
+                <button id="legend-6" class="safe-move"></button>
+            </div>
+
+            <!-- Game Board -->
+            <div id="game_td">
+                <table id="game_matrix"></table>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="side-panel">
+
+                <input tabindex="2" class="main-btns" type="button" id="solve" value="Solve">
+                <input tabindex="3" class="main-btns" type="button" id="speed" value="Slow">
+                <input tabindex="4" class="main-btns" type="button" id="size" value="Small">
+            </div>
+        </div>
+    </div>
+</body>
+</html>

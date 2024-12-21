@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <style>
+    body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f9f9f9;
+    }
+
+    .container {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+    }
+
+    h1 {
+        font-family: fantasy;
+        font-weight: 200;
+        margin: 0;
+    }
+
+    table {
+        border-collapse: collapse;
+        margin: 5px 0;
+    }
+
+    td.info {
+        padding: 5px;
+    }
+
+    #game_matrix {
+        border: 1px solid #ccc;
+    }
+
+    .btns {
+        height: 50px;
+        width: 50px;
+    }
+
+    .marked-mine{
+        height: 50px;
+        width: 50px;
+        background-color: crimson;
+    }
+
+    .marked-safe{
+        height: 50px;
+        width: 50px;
+        background-color: lightgreen;
+    }
+
+    .random-move{
+        height: 50px;
+        width: 50px;
+        background-color: rgb(255, 100, 0);
+    }
+
+    .safe-move{
+        height: 50px;
+        width: 50px;
+        background-color: lightblue;
+    }
+
+
+    .main-btns{
+        height: 50px;
+        width: 100px;
+    }
+
+    .btns:disabled {
+        color: black;
+        background-color: azure;
+    }
+
+    .hidden{
+        color: rgba(255, 0, 0, 0)
+    }
+
+    .main-btns {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    .game-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .side-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .side-panel input {
+        padding: 5px;
+        text-align: center;
+        width: 80px;
+    }
+
+    #mine_count{
+        padding: 5px;
+        text-align: center;
+        width: 100px;
+        border-radius:1rem;
+        border-width: 1px;
+        border-color:darkgrey;
+
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Title Section -->
+        <div>
+            <h1 id="title">💣Minesweeper💣</h1>
+        </div>
+        
+        <!-- Info Buttons Section -->
+        <div>
+            <span class="info">Set Mine Count 🚩<input tabindex="1" type="text" id="mine_count" value="0"></span>
+        </div>
+
+        <!-- Game Matrix and Side Panels -->
+        <div class="game-wrapper">
+            <!-- Left Panel -->
+            <div class="side-panel">
+                <label for="legend-3"><small>Marked Mine</small></label>
+                <button id="legend-3" class="marked-mine"></button>
+                <label for="legend-4"><small>Marked Safe</small></label>
+                <button id="legend-4" class="marked-safe"></button>
+                <label for="legend-5"><small>Making Random<br>Move</small></label>
+                <button id="legend-5" class="random-move"></button>
+                <label for="legend-6"><small>Making Safe<br>Move</small></label>
+                <button id="legend-6" class="safe-move"></button>
+            </div>
+
+            <!-- Game Board -->
+            <div id="game_td">
+                <table id="game_matrix"></table>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="side-panel">
+
+                <input tabindex="2" class="main-btns" type="button" id="solve" value="Solve">
+                <input tabindex="3" class="main-btns" type="button" id="speed" value="Slow">
+                <input tabindex="4" class="main-btns" type="button" id="size" value="Small">
+            </div>
+        </div>
+    </div>
+<script>
+    function compareSets(set1, set2) {
+    if (set1.size !== set2.size) return false;
+
+    for (let cell1 of set1) {
+        let found = false;
+
+        for (let cell2 of set2) {
+            if (JSON.stringify(cell1) === JSON.stringify(cell2)) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) return false;
+    }
+
+    return true;
+}
+
+function deleteFromSet(set,target){
+    for (let item of set) {
+        if (Array.isArray(item) && item.length === target.length && item.every((val, index) => val === target[index])) {
+            set.delete(item);
+            break;
+        }
+    }
+}
+
+function subtractSets(setA, setB) {
+    return new Set(
+        [...setA].filter(elemA => 
+            ![...setB].some(elemB => elemA === elemB)
+        )
+    );
+}
+
+function subtractSetsArray(setA, setB) {
+    const setBStringified = new Set([...setB].map(elemB => JSON.stringify(elemB)));
+
+    return new Set(
+        [...setA].filter(elemA => 
+            !setBStringified.has(JSON.stringify(elemA))
+        )
+    );
+}
+
+function setContainsCell(set,target){
+    for(let cell of set){
+        if(typeof cell != 'string'){
+            if(JSON.stringify(cell)===target) return true
+        }
+        if(cell===target) return true
+        
+    }
+    return false
+}
+
+function setIsSubset(set1, set2) {
+    for (let cell1 of set1) {
+        let found = false;
+
+        // Compare cell1 (stringified if necessary) with all elements in set2
+        for (let cell2 of set2) {
+            if (JSON.stringify(cell1) === JSON.stringify(cell2)) {
+                found = true;
+                break;
+            }
+        }
+
+        // If a cell from set1 is not found in set2, return false
+        if (!found) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+class MinesweeperBoard{
+
+    constructor(height, width, mine_count,MINE){
+        this.height = height;
+        this.width = width;
+        this.grid = this.create2DArray(height,width,' ')
+        this.mines = new Set()
+        
+        while(mine_count > this.mines.size){
+            let i = getRandomInt(0,height-1)
+            let j = getRandomInt(0,width-1)
+            if(this.grid[i][j] != MINE){
+                this.mines.add(JSON.stringify([i,j]))
+                this.grid[i][j] = MINE
+            }
+        }
+        
+        for(let row = 0; row < this.height; row++){
+            for(let col = 0; col < this.width; col++){
+                if(this.grid[row][col] == MINE) continue;
+                let count = 0
+                for(let i = row-1; i < row+2; i++){
+                    for(let j = col-1; j < col+2; j++){
+                        if(i < this.height && j < this.width && i > -1 && j > -1){
+                            if(this.grid[i][j] == MINE){
+                                count += 1
+                            }
+                        }
+                    }
+                }
+                this.grid[row][col] = new String(count)
+            }
+        }
+    }
+
+    print(){
+        let x = []
+        for(let i = 0; i < this.height; i++){
+            console.log(i + JSON.stringify(this.grid[i]))
+            x.push(new String(i))
+        }
+        console.log(" " + JSON.stringify(x))
+    }
+    
+    create2DArray(rows, cols, initialValue = 0) {
+        return Array.from({ length: rows }, () => Array.from({ length: cols }, () => initialValue));
+    }
+    
+    render(game_matrix){
+        game_matrix.innerHTML = ""
+
+        for(let i =0; i < this.height; i++){
+            let row = document.createElement("tr")
+            for(let j = 0; j < this.width; j++){
+                let cell = document.createElement("td")
+                let btn = document.createElement("input")
+                btn.type = "button"
+                btn.id = `${i}-${j}`
+                btn.classList.add("btns")
+                btn.classList.add("hidden")
+                btn.value = this.grid[i][j]
+                cell.appendChild(btn)
+                row.appendChild(cell)
+            }
+            game_matrix.appendChild(row)
+        }
+
+        let mine_counter = document.getElementById('mine_count')
+        mine_counter.value = this.mines.size
+
+    }
+}
+
+class Sentence{
+    constructor(cells,count){
+        this.cells = new Set(cells);
+        this.count = count;
+    }
+    
+    confirmed_mines(){
+        if(this.cells.size == this.count && this.cells.size != 0){
+            return new Set(this.cells)
+        }
+        return new Set()
+    }
+
+    confirmed_safes(){
+        if(this.count == this.confirmed_mines().size){
+            return subtractSetsArray(this.cells,this.confirmed_mines());
+        }
+        return new Set()
+    }
+
+    toString(){
+        let oneDArray = []
+        for(let cell of this.cells){
+            oneDArray.push(cell)
+        }
+        return `Sentence:- cells: ${JSON.stringify(oneDArray)}, count: ${this.count}`
+    }
+
+    equals(other){
+        return this.count == other.count && compareSets(this.cells, other.cells);
+    }
+
+}
+
+class AiSolver{
+
+    constructor(height,width){
+        this.height = height
+        this.width = width
+
+        this.moves_made = new Set()
+        this.mines = new Set()
+        this.safes = new Set()
+
+        this.knowledge = []
+    }
+
+    learn(cell,count){
+        this.moves_made.add(JSON.stringify(cell))
+        this.safes.add(JSON.stringify(cell))
+        
+        let neighbors = []
+        for(let i = cell[0]-1; i <= cell[0]+1; i++){
+            for(let j = cell[1]-1; j <= cell[1]+1; j++){
+                if(i < this.height && j < this.width && i > -1 && j > -1){
+                    if(!setContainsCell(this.moves_made,JSON.stringify([i,j]))){
+                        neighbors.push([i,j])
+                    }
+                }
+            }
+        }
+
+        if(count == 0){
+            neighbors.forEach((neighbor)=>{
+                this.safes.add(JSON.stringify(neighbor));
+            })
+        }
+
+
+        let newSentence = new Sentence(neighbors,count)
+        this.knowledge.push(newSentence);        
+        
+        let changesMade;
+        do {
+            changesMade = false;
+            // Check for subset relationships again after updates
+            [...this.knowledge].forEach((sen1, i) => {
+                [...this.knowledge].forEach((sen2, j) => {
+                    if (i!=j && setIsSubset(sen1.cells, sen2.cells)) {
+                        let inferredSentence = new Sentence(subtractSetsArray(sen2.cells, sen1.cells),sen2.count - sen1.count);
+                        if (inferredSentence.cells.size > 0 && !this.knows(inferredSentence)) {
+                            this.knowledge.push(inferredSentence);
+                            changesMade = true;
+                        }
+                    }
+                });
+            });
+    
+            
+            [...this.knowledge].forEach((sentence) => {
+            sentence.confirmed_mines().forEach((mine)=>{
+                this.mines.add(JSON.stringify(mine))
+                changesMade = true
+            })
+            sentence.confirmed_safes().forEach((safe)=>{
+                this.safes.add(JSON.stringify(safe))
+                changesMade = true
+            })
+            });
+
+            
+            [...this.knowledge].forEach((sentence) => {
+                [...sentence.cells].forEach((cell) => {
+                    if(setContainsCell(this.mines,JSON.stringify(cell))){
+                        document.getElementById(cell[0]+'-'+cell[1]).style['background-color'] = 'red'
+                        document.getElementById('legend-3').innerHTML = this.mines.size
+                        deleteFromSet(sentence.cells,cell)
+                        sentence.count -= 1
+                        changesMade = true
+                    }
+                    if(setContainsCell(this.safes,JSON.stringify(cell))){
+                        document.getElementById(cell[0]+'-'+cell[1]).style['background-color'] = 'lightgreen'
+                        deleteFromSet(sentence.cells,cell)
+                        changesMade = true
+                    }
+                })
+            })
+        } while (changesMade);
+        
+        this.knowledge = this.knowledge.filter(sentence => sentence.cells.size > 0);
+        
+    }
+
+    make_safe_move(){
+        let x = subtractSets(this.safes,this.moves_made)
+        if (x.size === 0) return null;
+        for(let cell of x){
+            this.moves_made.add(cell)
+            return cell
+        }
+    }
+
+    make_random_move(){
+        let excludedCells = new Set(this.moves_made)
+        this.mines.forEach(cell => {
+            excludedCells.add(cell)
+        });
+        if (excludedCells.size >= this.height * this.width){ 
+            return null
+        }
+
+        while(true){
+            let i = getRandomInt(0,this.height-1)
+            let j = getRandomInt(0,this.width-1)
+            if(!setContainsCell(excludedCells,JSON.stringify([i,j]))){
+                this.moves_made.add(JSON.stringify([i,j]))
+                random_moves_made += 1
+                document.getElementById("legend-5").innerHTML = random_moves_made
+                return JSON.stringify([i,j])
+            }
+        }
+    }
+
+    knows(sentence){
+        for(let knownSentence of this.knowledge){
+            if(sentence.equals(knownSentence)){
+                return true
+            }
+        }
+        return false
+    }
+
+    print(){
+        for(let sentence of this.knowledge){
+            console.log(sentence.toString())
+        }
+    }
+
+}
+
+function reveal_all() {
+    let all_buttons = document.getElementsByClassName('btns')
+    for(let button of all_buttons) {
+        if(button.value == '0'){
+            button.value = ''
+        }
+        button.classList.remove('hidden')
+    }
+}
+
+function game_won(mines){
+    finished=true
+    let solve_button = document.getElementById('solve')
+    let speed_button = document.getElementById('speed')
+    speed_button.disabled= true
+    solve_button.value = 'Reload'
+    for(let mine of mines){
+        let id = JSON.parse(mine)[0]+'-'+JSON.parse(mine)[1]
+        let btn = document.getElementById(id)
+        btn.disabled = true
+        btn.value = FLAG
+        btn.style['background-color'] = 'green'
+    }
+    let input = document.getElementById('mine_count')
+    input.value = WINNER_STRING
+    input.style['color'] = 'green'
+}
+
+function game_over(move){
+    finished=true
+    let solve_button = document.getElementById('solve')
+    let speed_button = document.getElementById('speed')
+    speed_button.disabled= true
+    solve_button.value = 'Reload'
+    let id = move[0]+'-'+move[1]
+    let btn = document.getElementById(id)
+        btn.disabled = true
+        btn.style['background-color'] = 'red'
+        let input = document.getElementById('mine_count')
+        input.value = LOSER_STRING
+        input.style['color'] = 'red'
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function solve(delay_time,flag){
+    let delay = delay_time
+    while(flag[0] == true){
+        await sleep(delay);
+        let safe = true
+        let next_move = JSON.parse(solver.make_safe_move())
+        
+        if(next_move == null){
+            console.log("safe move not found, making random move")
+            next_move = JSON.parse(solver.make_random_move())
+            safe = false
+        }
+        if(next_move == null){
+            game_won(solver.mines)
+            reveal_all()
+            return
+        }
+        let button = document.getElementById(`${next_move[0]}-${next_move[1]}`)
+        let selected_cell_content = board.grid[next_move[0]][next_move[1]]
+        button.classList.remove('hidden')
+        button.disabled=true
+        if(selected_cell_content != MINE){
+            solver.learn(next_move,parseInt(selected_cell_content))
+            button.style['background-color'] = safe?'lightblue':'rgb(255, 100, 0)'
+            if(selected_cell_content == '0') {
+                button.value=""   
+            }
+            await sleep(HIGHLIGHT_TIME)
+            button.style['background-color'] = 'azure'
+        }else{
+            game_over(next_move)
+            reveal_all()
+            return
+        }
+
+    }
+    
+}
+
+document.addEventListener('DOMContentLoaded',() => {
+
+board.render(GAME_MATRIX)
+const solve_button = document.getElementById('solve')
+const speed_button = document.getElementById('speed')
+const mine_counter = document.getElementById('mine_count')
+mine_counter.focus();
+const size_button = document.getElementById('size')
+speed_button.disabled = true
+let solving = false
+const flag = [false]
+const delay = [500]
+solve_button.addEventListener('click',() => {
+    if(!started) board.render(GAME_MATRIX)
+    started = true
+    mine_counter.disabled = true
+    size_button.disabled = true
+    if(finished){
+        window.location.reload(true)
+    }
+    if(!solving){
+        flag[0] = true
+        speed_button.disabled = false
+        solve(delay,flag)
+        solving = true
+        solve_button.value = 'Pause'
+    }else{
+        solving = false
+        flag[0] = false
+        solve_button.value = 'Solve'
+    }
+})
+speed_button.addEventListener('click',() => {
+    switch (delay[0]) {
+        case SLOW_SPEED:
+            delay[0] = MEDIUM_SPEED
+            speed_button.value = 'Medium'
+            break;
+        case MEDIUM_SPEED:
+            delay[0] = FAST_SPEED
+            speed_button.value = 'Fast'
+            break;
+        case FAST_SPEED:
+            delay[0] = SLOW_SPEED
+            speed_button.value = 'Slow'
+        break;
+    }
+})
+
+size_button.addEventListener('click',() => {
+    switch (dimension) {
+        case SMALL:
+            dimension = MEDIUM
+            mine_count = 35
+            size_button.value = `Medium`
+            break;
+        case MEDIUM:
+            dimension = LARGE
+            mine_count = 150
+            size_button.value = `Large`
+            break;
+        case LARGE:
+            dimension = ABSURD
+            mine_count = 300
+            size_button.value = `ABSURD`
+            break;
+        case ABSURD:
+            dimension = SMALL
+            mine_count = 15
+            size_button.value = `Small`
+            break;
+    }
+    board = new MinesweeperBoard(dimension,dimension,mine_count,MINE)
+    solver = new AiSolver(dimension,dimension)
+    board.render(GAME_MATRIX)
+})
+
+mine_counter.addEventListener('change',() =>{
+    mine_count = mine_counter.value
+    board = new MinesweeperBoard(dimension,dimension,mine_count,MINE)
+    solver = new AiSolver(dimension,dimension)
+})
+
+
+
+})
+
+
+const SLOW_SPEED = 500
+const MEDIUM_SPEED = 200
+const FAST_SPEED = 0
+const HIGHLIGHT_TIME =75
+
+const SMALL = 10
+const MEDIUM = 16
+const LARGE = 32
+const ABSURD = 45
+
+let finished = false
+let started = false
+let dimension = SMALL
+let mine_count = 15
+let random_moves_made = 0
+const MINE = '💣'
+const FLAG = '🚩'
+const WINNER_STRING = "WIN!"
+const LOSER_STRING = "BOOM!"
+const GAME_MATRIX = document.getElementById("game_matrix")
+let board = new MinesweeperBoard(dimension,dimension,mine_count,MINE)
+let solver = new AiSolver(dimension,dimension)
+
+</script>
+
+</body>
+</html>
