@@ -1,6 +1,6 @@
 # MinesweeperAI
 Welcome to the MinesweeperAI project! 
-This is an extension of my previous ![minesweeper](https://github.com/pronoob828/Minesweeper) project which was just a simple game. 
+This is an extension of my previous [minesweeper](https://github.com/pronoob828/Minesweeper) project which was just a simple game. 
 I have been meaning to make a minesweeper solver for ages.
 Finally got around to it and made some enhancements to the UI while I was at it.
 
